@@ -17,6 +17,7 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -35,6 +36,7 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({
     if (!productName || !category) return;
     
     setIsGenerating(true);
+    setError(null);
     try {
       const imageUrl = await generateProductImage(
         productName, 
@@ -45,6 +47,7 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({
       onImageGenerated(imageUrl);
     } catch (error) {
       console.error('Error generating image:', error);
+      setError('Failed to generate image. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -52,6 +55,7 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({
 
   return (
     <div className="space-y-4">
+      {error && <p className="text-red-500">{error}</p>}
       <div className="flex gap-4">
         <label className="flex-1">
           <div className="relative cursor-pointer group">
