@@ -2,6 +2,7 @@ import React from 'react';
 import { PRODUCT_CATEGORIES } from '../data/categories';
 import { NewProduct } from '../types/product';
 import ImageGenerator from './ImageGenerator';
+import { supabase } from '../lib/supabase'; // 导入 Supabase 客户端
 
 type ProductFormProps = {
   newProduct: NewProduct;
@@ -14,8 +15,31 @@ const ProductForm: React.FC<ProductFormProps> = ({
   setNewProduct,
   onSubmit,
 }) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // 插入产品信息到 Supabase
+    const { data, error } = await supabase
+      .from('products') // 替换为你的表名
+      .insert([
+        {
+          name: newProduct.name,
+          price: newProduct.price,
+          category: newProduct.category,
+          description: newProduct.description,
+          image: newProduct.image,
+        },
+      ]);
+
+    if (error) {
+      console.error('Error inserting product:', error);
+    } else {
+      console.log('Product inserted:', data);
+    }
+  };
+
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label className="block text-sm text-white/60 mb-1">Item name</label>
         <input

@@ -7,12 +7,14 @@ import { GenerateButton } from './GenerateButton';
 type ImageGeneratorProps = {
   productName: string;
   category: string;
+  description?: string;
   onImageGenerated: (imageUrl: string) => void;
 };
 
 const ImageGenerator: React.FC<ImageGeneratorProps> = ({
   productName,
   category,
+  description,
   onImageGenerated
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -26,7 +28,8 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({
       const imageUrl = await generateProductImage(
         productName,
         category,
-        referenceImage || undefined
+        referenceImage || undefined,
+        description  || undefined
       );
       onImageGenerated(imageUrl);
     } catch (error) {

@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, GenerateContentResult, Part } from "@google/generative-ai";
 import { getFallbackImage } from './fallbackImages';
 import { base64ToImagePart } from './imageProcessing';
 import { buildImagePrompt } from './promptBuilder';
@@ -14,30 +14,31 @@ const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 export async function generateProductImage(
   name: string,
   category: string,
-  referenceImage?: string
+  referenceImage?: string,
+  description?: string
 ): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" }); // Changed to vision model
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     
-    const prompt = buildImagePrompt(name, category, !!referenceImage);
-    let parts = [{ text: prompt }];
+    const prompt = buildImagePrompt(name, category, !!referenceImage, description);
+    const parts: (string | Part)[] = [{ text: prompt }];
 
     if (referenceImage) {
       const imagePart = await base64ToImagePart(referenceImage);
       if (imagePart) {
-        parts.push(imagePart);
+        parts.push(imagePart as Part);
       }
     }
 
-    const result = await model.generateContent([{ parts }]);
+    const result: GenerateContentResult = await model.generateContent(parts);
     const response = await result.response;
     
-    if (!response.candidates?.[0]?.content?.parts?.[0]?.text) {
-      throw new Error('Invalid response format from Gemini API');
+    const generatedImage = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (!generatedImage) {
+      throw new Error('No image data received from Gemini API');
     }
 
-    const generatedImageUrl = response.candidates[0].content.parts[0].text;
-    return generatedImageUrl;
+    return generatedImage; // This will be a base64 encoded image
   } catch (error) {
     console.error('Error generating image:', error);
     return getFallbackImage(category);

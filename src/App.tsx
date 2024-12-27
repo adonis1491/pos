@@ -4,62 +4,42 @@ import Numpad from './components/Numpad';
 import CartItems from './components/CartItems';
 import ProductGrid from './components/ProductGrid';
 import PaymentModal from './components/PaymentModal';
-
-export type CartItem = {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-};
+import DailyOrdersModal from './components/DailyOrdersModal';
+import { useCart } from './hooks/useCart';
+import { usePayment } from './hooks/usePayment';
+import { getDailyOrders } from './lib/orders';
+import type { OrderSummary } from './types/financial';
 
 const App: React.FC = () => {
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [activeInput, setActiveInput] = useState<'quantity' | 'price' | null>(null);
-  const [inputValue, setInputValue] = useState('');
+  const {
+    cart,
+    setCart,
+    addToCart,
+    handleNumpadInput,
+    calculateTotal,
+  } = useCart();
+
+  const {
+    showPaymentModal,
+    selectedPaymentType,
+    handlePayment,
+    handlePaymentComplete,
+  } = usePayment();
+
+  const [showDailyOrders, setShowDailyOrders] = useState(false);
+  const [dailyOrders, setDailyOrders] = useState<OrderSummary[]>([]);
   const [loyaltyPoints, setLoyaltyPoints] = useState(150);
   const [showScanner, setShowScanner] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedPaymentType, setSelectedPaymentType] = useState<string>('');
 
-  const addToCart = (product: { id: string; name: string; price: number }) => {
-    setCart(prev => {
-      const existingItem = prev.find(item => item.id === product.id);
-      if (existingItem) {
-        return prev.map(item =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
-      return [...prev, { ...product, quantity: 1 }];
-    });
-  };
-
-  const handleNumpadInput = (value: string) => {
-    if (!activeInput) return;
-    setInputValue(prev => {
-      if (value === 'backspace') return prev.slice(0, -1);
-      if (value === 'clear') return '';
-      if (value === '.' && prev.includes('.')) return prev;
-      return prev + value;
-    });
-  };
-
-  const handlePayment = (paymentType: string) => {
-    if (cart.length === 0) return;
-    setSelectedPaymentType(paymentType);
-    setShowPaymentModal(true);
-  };
-
-  const handlePaymentComplete = () => {
-    setShowPaymentModal(false);
-    setCart([]);
-    // Add loyalty points (10 points per dollar spent)
-    setLoyaltyPoints(prev => prev + Math.floor(calculateTotal() * 10));
-  };
-
-  const calculateTotal = () => {
-    return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const handleViewDailyOrders = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const orders = await getDailyOrders(today);
+      setDailyOrders(orders);
+      setShowDailyOrders(true);
+    } catch (error) {
+      console.error('Error fetching daily orders:', error);
+    }
   };
 
   return (
@@ -85,7 +65,9 @@ const App: React.FC = () => {
           </button>
           
           <div className="flex items-center space-x-3">
-            <Clock className="h-5 w-5 text-starbucks-green/80" />
+            <button onClick={handleViewDailyOrders}>
+              <Clock className="h-5 w-5 text-starbucks-green/80 hover:text-starbucks-green" />
+            </button>
             <Settings className="h-5 w-5 text-starbucks-green/80" />
           </div>
         </div>
@@ -122,6 +104,19 @@ const App: React.FC = () => {
         </div>
       </main>
 
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => handlePaymentComplete(cart, calculateTotal())}
+        amount={calculateTotal()}
+        paymentType={selectedPaymentType}
+      />
+
+      <DailyOrdersModal
+        isOpen={showDailyOrders}
+        onClose={() => setShowDailyOrders(false)}
+        orders={dailyOrders}
+      />
+
       {showScanner && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm z-50">
           <div className="bg-starbucks-brown p-6 rounded-xl shadow-xl max-w-md w-full border border-starbucks-green/20">
@@ -143,13 +138,6 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
-
-      <PaymentModal
-        isOpen={showPaymentModal}
-        onClose={handlePaymentComplete}
-        amount={calculateTotal()}
-        paymentType={selectedPaymentType}
-      />
     </div>
   );
 };
